@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+store.json
+*.sqlite
+
+# local sandbox ledger
+**/ledger.sqlite
+**/ledger.sqlite-*
+.env

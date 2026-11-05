@@ -1,0 +1,16 @@
+{
+  "name": "proofpowers-pay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI agent proposes vendor payments; a deterministic gate + hash-bound human approval send only unchanged amounts through PayPal sandbox.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "demo": "node demo/mock.mjs",
+    "demo:sandbox": "node demo/sandbox.mjs",
+    "test:gate": "node test/gate20.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
