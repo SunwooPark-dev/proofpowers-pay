@@ -1,13 +1,8 @@
 node_modules/
+state/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
 .env
 .env.*
-!.env.example
-*.log
-.DS_Store
-store.json
-*.sqlite
-
-# local sandbox ledger
-**/ledger.sqlite
-**/ledger.sqlite-*
-.env
+demo-output/

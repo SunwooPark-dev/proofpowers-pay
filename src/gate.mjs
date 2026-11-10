@@ -23,5 +23,3 @@ export function gate(inv,ctx,seen=new Set()){
   if(!r.length&&poNorm) seen.add('PO|'+poNorm);
   return {verdict:r.length?'BLOCK':'PASS',reasons:r};
 }
-if(process.argv[2]){const d=JSON.parse(fs.readFileSync(process.argv[2]));const s=new Set();let ok=0;
- for(const i of d.invoices){const g=gate(i,d,s);const k=(i.expect==='PAY')===(g.verdict==='PASS');ok+=k;if(!k)console.log('WRONG',i.id,g.reasons);}console.log(process.argv[2],ok+'/'+d.invoices.length);}

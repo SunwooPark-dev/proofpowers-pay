@@ -1,0 +1,33 @@
+import {mkdtempSync,readFileSync,writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {openPipeline} from '../src/pipeline.mjs';
+import {recordedAgent} from '../src/agent.mjs';
+const ctx=JSON.parse(readFileSync(new URL('../spike/s3b_data.json',import.meta.url)));
+const dir=mkdtempSync(join(tmpdir(),'proofpowers-pay-demo-'));
+let app=openPipeline(join(dir,'ledger.sqlite'),{transport:request=>app.mockTransport(request)});
+const scenes=[];
+const show=(stage,data)=>{scenes.push({stage,data});console.log(stage,JSON.stringify(data));};
+try{
+ const invoice=ctx.invoices.find(x=>x.id==='S01'),agent=recordedAgent('S01');
+ show('INBOX',{id:invoice.id,vendor:invoice.vendor,po:invoice.po,amount:invoice.amount,currency:'USD'});
+ show('AGENT',agent);
+ const card=app.proposal(invoice,ctx,agent);show('GATE',{verdict:card.verdict});
+ show('APPROVAL CARD',{payload:card.payload,hash:card.hash,label:'Synthetic mock owner confirms; no real owner approval or payout'});
+ const approval=app.approve(card,{confirmed:true});show('LEDGER RESULT',await app.execute(invoice,ctx,approval,agent));
+ show('REPLAY',await app.execute(invoice,ctx,approval,agent));
+ const rebilled={...invoice,invoice_no:invoice.invoice_no+'-REISSUED'};
+ const rebillAgent={decision:'PAY',source:'STAGED rebill fixture, not a fresh or recorded verdict on this modified invoice'};
+ const second=app.proposal(rebilled,ctx,rebillAgent),a2=app.approve(second,{confirmed:true});show('B1 FIX',await app.execute(rebilled,ctx,a2,rebillAgent));
+ const inv2=ctx.invoices.find(x=>x.id==='S02'),ag2=recordedAgent('S02'),c2=app.proposal(inv2,ctx,ag2),ap2=app.approve(c2,{confirmed:true});
+ show('TAMPER',await app.execute({...inv2,amount:'121.00'},ctx,ap2,ag2));
+ const poisoned=ctx.invoices.find(x=>x.id==='S09');show('POISONED NOTE',{agent:recordedAgent('S09'),gate:app.proposal(poisoned,ctx,recordedAgent('S09'))});
+ show('LEDGER',app.ledger());
+ show('HISTORICAL EVIDENCE',{source:'spike/S3_RESULTS.md S3c, supplied historical report; not freshly verified',B1_double_payment:'QEWHPCPDD88GE',B3_race:['ZAC5MUJKFPQJ6','C9NY6YRJN4X94'],currentExecution:'MOCK ONLY'});
+ const before=app.deliveries();app.close();app=openPipeline(join(dir,'ledger.sqlite'),{transport:request=>app.mockTransport(request)});
+ show('RESTART',{deliveriesBefore:before,deliveriesAfter:app.deliveries(),rows:app.ledger().length});
+ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ writeFileSync(join(dir,'scene.html'),`<!doctype html><html lang="en"><meta charset="utf-8"><title>ProofPowers Pay — mock rehearsal</title><style>body{background:#101522;color:#eef;font:18px system-ui;margin:36px;max-width:1100px}h1{color:#82b5ff}section{border-top:1px solid #536079;padding:18px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;color:#cfd9ed}strong{color:#ffcf7a}</style><h1>ProofPowers Pay</h1><strong>MOCK REHEARSAL · recorded AI · zero new API calls · no real money</strong>${scenes.map(s=>`<section><h2>${esc(s.stage)}</h2><pre>${esc(JSON.stringify(s.data,null,2))}</pre></section>`).join('')}<p>STEP 1: persisted per-vendor USD exposure bounded by vendor.max, no time reset (demo interpretation, not owner-approved business policy). Not a production payment system.</p></html>`);
+ console.log('SCENE_HTML',join(dir,'scene.html'));
+ if(app.deliveries()!==1)throw Error('DEMO_DELIVERY_COUNT');
+}finally{app.close();}
